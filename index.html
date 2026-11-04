@@ -84,6 +84,8 @@ h1 span { color: var(--accent); }
 .sugg .k b { font-weight: 600; }
 .sugg .k i { font-style: normal; font-size: 0.8rem; color: var(--muted); }
 .match { font-size: 0.85rem; color: var(--ok); font-weight: 600; margin-top: -8px; white-space: pre-line; line-height: 1.6; }
+.kstat { font-size: 0.78rem; color: var(--muted); margin-top: -10px; }
+.kstat.bad { color: var(--accent); font-weight: 600; }
 .sugg small.hd { font-family: var(--font-body); color: var(--muted); align-self: center; }
 .sugg small.hd b { color: var(--accent); }
 .match.warn { color: var(--accent); }
@@ -152,6 +154,7 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
     <div class="sugg" id="sugg" hidden></div>
   </div>
   <div class="match" id="matchNote" hidden></div>
+  <div class="kstat" id="kStat"></div>
 
   <div class="controls">
     <div class="row">
@@ -450,13 +453,26 @@ $("wPick").addEventListener("click", e => {
 // ===== 카카오 주소 검색 (GitHub Pages 버전에서만 동작 — 빌드 시 키가 들어감) =====
 const KAKAO_KEY = "73ed318afa559f83513ec1d0e85203e2";
 let kakaoOK = false, kPlaces = null, kGeo = null, kTimer = null, kSeq = 0;
+// 주소 검색 연결 상태를 검색창 아래에 표시 (안 될 때 이유를 바로 알 수 있게)
+const SITE = "https://sseng1022-lgtm.github.io/incheon/";
+function kStatus(ok, msg) { const el = $("kStat"); el.textContent = msg; el.classList.toggle("bad", !ok); }
 if (KAKAO_KEY && !KAKAO_KEY.startsWith("/*")) {
-  const sc = document.createElement("script");
-  sc.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&libraries=services&autoload=false`;
-  sc.onload = () => kakao.maps.load(() => {
-    kPlaces = new kakao.maps.services.Places(); kGeo = new kakao.maps.services.Geocoder(); kakaoOK = true;
-  });
-  document.head.appendChild(sc);
+  if (location.hostname !== "sseng1022-lgtm.github.io") {
+    kStatus(false, `⚠ 이 화면에서는 주소 검색이 안 돼요. ${SITE} 로 열어주세요. (지역명 검색은 가능)`);
+  } else {
+    kStatus(true, "주소 검색 연결 중…");
+    const sc = document.createElement("script");
+    sc.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_KEY}&libraries=services&autoload=false`;
+    sc.onload = () => { try { kakao.maps.load(() => {
+      kPlaces = new kakao.maps.services.Places(); kGeo = new kakao.maps.services.Geocoder(); kakaoOK = true;
+      kStatus(true, "📍 주소 검색 사용 가능 — 도로명·지번·건물명 모두 됩니다");
+    }); } catch (e) { kStatus(false, "⚠ 주소 검색 연결 실패 — 새로고침(Ctrl+F5) 해보세요"); } };
+    sc.onerror = () => kStatus(false, "⚠ 주소 검색 연결 실패 — 인터넷 연결 확인 후 새로고침(Ctrl+F5) 해보세요");
+    document.head.appendChild(sc);
+    setTimeout(() => { if (!kakaoOK) kStatus(false, "⚠ 주소 검색 연결 실패 — 새로고침(Ctrl+F5) 해보세요"); }, 8000);
+  }
+} else {
+  kStatus(false, "주소 검색은 사이트 주소에서만 돼요. 지역명(읍·면·동)으로 검색하세요.");
 }
 let pendingEnter = false;
 function kakaoSearch(q, replaceLocal, local) {
