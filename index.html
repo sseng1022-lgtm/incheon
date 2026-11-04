@@ -186,13 +186,13 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
       </div>
       <div class="row wrow">
         <span class="lab">중량할증</span>
-        <div class="wpick" id="wPick" role="group" aria-label="중량할증 요율"></div>
-        <span class="hint">한 번 더 누르면 해제</span>
+        <label class="opt"><input id="wPct" class="num-in" type="number" min="0" max="100" step="1" value="0" aria-label="중량할증 요율"> %</label>
+        <span class="hint">1~100 숫자 입력 (0 = 미적용)</span>
       </div>
       <div class="row" style="margin-top:10px">
         <label class="opt">내품 무게 <input id="weight" class="num-in" type="number" min="0" step="0.1" value="0"> 톤</label>
         <label class="opt">활대 초과 <input id="over" class="num-in" type="number" min="0" step="1" value="0"> cm</label>
-        <span class="hint">다수 할증: 최고 요율 100% + 나머지 50%, 상위 3개까지 · 톤수 입력 시 40피트 23톤 / 20피트 20톤 초과 1톤당 10% (중량할증 버튼을 고르면 그 요율이 우선)</span>
+        <span class="hint">다수 할증: 최고 요율 100% + 나머지 50%, 상위 3개까지 · 톤수 입력 시 40피트 23톤 / 20피트 20톤 초과 1톤당 10% (중량할증 %를 넣으면 그 요율이 우선)</span>
       </div>
     </details>
   </div>
@@ -333,7 +333,8 @@ function surcharge(ft) {
   const sc = [...document.querySelectorAll(".sc:checked")].map(el => [el.dataset.name, +el.value]);
   const w = +$("weight").value || 0, over = +$("over").value || 0;
   const lim = ft === "40" ? 23 : 20;
-  if (state.wRate > 0) sc.push([`중량 ${Math.round(state.wRate * 100)}%`, state.wRate]);  // 직접 고른 중량할증이 톤수보다 우선
+  const wPct = Math.min(100, Math.max(0, +$("wPct").value || 0));
+  if (wPct > 0) sc.push([`중량 ${+wPct.toFixed(2)}%`, wPct / 100]);  // 직접 넣은 중량할증 %가 톤수보다 우선
   else if (w > lim) sc.push(["중량", Math.ceil(w - lim) * 0.1]);
   if (over > 0) sc.push(["활대", Math.ceil(over / 10) * 0.1]);
   sc.sort((a, b) => b[1] - a[1]);
@@ -441,15 +442,6 @@ document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click"
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
   store.set("mode", state.mode); render();
 }));
-state.wRate = 0;
-$("wPick").innerHTML = Array.from({ length: 10 }, (_, i) => `<button type="button" data-w="${(i + 1) / 10}" aria-pressed="false">${(i + 1) * 10}%</button>`).join("");
-$("wPick").addEventListener("click", e => {
-  const b = e.target.closest("button"); if (!b) return;
-  const w = +b.dataset.w;
-  state.wRate = state.wRate === w ? 0 : w;
-  $("wPick").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.w === state.wRate ? "true" : "false"));
-  render();
-});
 // ===== 카카오 주소 검색 (GitHub Pages 버전에서만 동작 — 빌드 시 키가 들어감) =====
 const KAKAO_KEY = "73ed318afa559f83513ec1d0e85203e2";
 let kakaoOK = false, kPlaces = null, kGeo = null, kTimer = null, kSeq = 0;
