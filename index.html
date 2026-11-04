@@ -458,7 +458,9 @@ const SITE = "https://sseng1022-lgtm.github.io/incheon/";
 function kStatus(ok, msg) { const el = $("kStat"); el.textContent = msg; el.classList.toggle("bad", !ok); }
 if (KAKAO_KEY && !KAKAO_KEY.startsWith("/*")) {
   if (location.hostname !== "sseng1022-lgtm.github.io") {
-    kStatus(false, `⚠ 이 화면에서는 주소 검색이 안 돼요. ${SITE} 로 열어주세요. (지역명 검색은 가능)`);
+    // 파일을 더블클릭해서 열었거나 다른 곳에서 열면 → 주소 검색이 되는 사이트로 자동 이동
+    kStatus(true, "사이트로 이동 중…");
+    try { location.replace(SITE); } catch (e) {}
   } else {
     kStatus(true, "주소 검색 연결 중…");
     const sc = document.createElement("script");
