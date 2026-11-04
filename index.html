@@ -165,7 +165,7 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
         <button type="button" data-mode="habul" aria-pressed="false">하불</button>
       </div>
       <label class="opt" id="shareWrap" hidden>쉐어율 <input id="share" class="num-in" type="number" min="0" max="100" step="1" value="30">%</label>
-      <label class="opt" id="onewayWrap" hidden><input id="oneway" type="checkbox"> 편도 표시</label>
+      <label class="opt" id="onewayWrap" hidden><input id="oneway" type="checkbox"> 편도</label>
       <label class="opt" id="roundWrap"><input id="round" type="checkbox" checked> 천원 사사오입</label>
     </div>
     <div class="row">
@@ -351,7 +351,8 @@ function value(o, ft, mode, round, share) {
   const sc = surcharge(ft);
   if (mode === "habul") {
     const v = fareSum(t, sc.items);
-    return $("oneway").checked ? `${fmt(v)}원 / ${fmt(r100(v / 2))}원` : `${fmt(v)}원`;
+    const rt = round ? r1000(v) : v, ow = round ? r1000(v / 2) : r100(v / 2);
+    return $("oneway").checked ? `${fmt(rt)}원 / ${fmt(ow)}원` : `${fmt(rt)}원`;
   }
   if (mode === "inter") { const v = fareSum(b, sc.items); return `${fmt(round ? r1000(v) : v)}원`; }
   const s = o["s" + ft], tt = o["t" + ft];
@@ -370,7 +371,6 @@ function render() {
   const orgs = [...document.querySelectorAll(".org:checked")].map(e => +e.value);
   const fts = [...document.querySelectorAll(".ft:checked")].map(e => e.value);
   $("shareWrap").hidden = mode !== "share";
-  $("roundWrap").hidden = mode === "habul";
   $("onewayWrap").hidden = mode !== "habul";
   const scNames = [...new Set([...surcharge("40").items, ...surcharge("20").items].map(x => x[0]))];
   const extra = [...scNames, ...($("combine").checked ? ["COMBINE"] : []), ...($("ft45").checked ? ["45FT"] : [])];
@@ -438,6 +438,7 @@ $("sugg").addEventListener("mousedown", e => { const b = e.target.closest("butto
 document.addEventListener("click", e => { if (!e.target.closest(".searchbox")) { suggList = []; renderSugg(); } });
 document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
   state.mode = b.dataset.mode;
+  $("round").checked = state.mode !== "habul";   // 기본: 안전운임·쉐어·운수사간=사사오입, 하불=미적용
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
   store.set("mode", state.mode); render();
 }));
@@ -584,7 +585,6 @@ renderEra();
 $("scGrid").innerHTML = SC.map(([n, r], i) => `<label><input type="checkbox" class="sc" id="sc${i}" data-name="${n}" value="${r}"> ${n} ${Math.round(r * 100)}%</label>`).join("");
 document.querySelectorAll(".controls input").forEach(el => el.addEventListener("input", () => {
   if (el.id === "share") store.set("share", el.value);
-  if (el.id === "round") store.set("round", el.checked);
   render();
 }));
 $("copy").addEventListener("click", () => {
@@ -603,7 +603,7 @@ $("copy").addEventListener("click", () => {
 state.mode = store.get("mode", "safe");
 document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.mode === state.mode ? "true" : "false"));
 $("share").value = store.get("share", "30");
-$("round").checked = store.get("round", true);
+$("round").checked = state.mode !== "habul";
 render();
 </script>
 
