@@ -83,13 +83,11 @@ h1 span { color: var(--accent); }
 .sugg .k { display: grid; gap: 1px; text-align: left; min-width: 0; }
 .sugg .k b { font-weight: 600; }
 .sugg .k i { font-style: normal; font-size: 0.8rem; color: var(--muted); }
-.match { font-size: 0.85rem; color: var(--ok); font-weight: 600; margin-top: -8px; }
+.match { font-size: 0.85rem; color: var(--ok); font-weight: 600; margin-top: -8px; white-space: pre-line; line-height: 1.6; }
+.sugg small.hd { font-family: var(--font-body); color: var(--muted); align-self: center; }
+.sugg small.hd b { color: var(--accent); }
 .match.warn { color: var(--accent); }
 .sugg small { color: var(--muted); font-family: var(--font-num); white-space: nowrap; }
-.recent { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.82rem; color: var(--muted); }
-.chip { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 999px; padding: 3px 10px;
-  font: inherit; font-size: 0.82rem; cursor: pointer; }
-.chip:hover { border-color: var(--accent); }
 
 /* 컨트롤 */
 .controls { display: grid; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; }
@@ -154,7 +152,6 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
     <div class="sugg" id="sugg" hidden></div>
   </div>
   <div class="match" id="matchNote" hidden></div>
-  <div class="recent" id="recent" hidden></div>
 
   <div class="controls">
     <div class="row">
@@ -176,7 +173,6 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
       <span class="lab">규격</span>
       <label class="opt"><input type="checkbox" class="ft" value="20" checked> 20피트</label>
       <label class="opt"><input type="checkbox" class="ft" value="40" checked> 40피트</label>
-      <label class="opt">장소명 <input id="place" class="txt-in" type="text" placeholder="예: 신항창고"></label>
     </div>
     <details id="scBox" open>
       <summary>할증 <span id="scCount" class="hint"></span></summary>
@@ -309,10 +305,10 @@ let suggList = [], suggOn = 0;
 let suggNote = null, suggMap = null;
 function renderSugg() {
   const box = $("sugg");
-  if (!suggList.length) { box.hidden = true; box.innerHTML = ""; return; }
+  if (!suggList.length && !suggNote) { box.hidden = true; box.innerHTML = ""; return; }
   const esc = t => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   box.innerHTML = (suggNote ? `<div class="note">${esc(suggNote)}${suggMap ? ` <a href="https://map.kakao.com/?q=${encodeURIComponent(suggMap)}" target="_blank" rel="noopener">카카오맵에서 보기 ↗</a>` : ""}</div>` : "") + suggList.map(({ it, shown, kakao: k }, i) => k
-    ? `<button type="button" data-i="${i}" class="${i === suggOn ? "on" : ""}"><span class="k"><b>${esc(k.name)}</b>${k.road || k.addr ? `<i>${esc(k.road || k.addr)}</i>` : ""}</span><small>주소</small></button>`
+    ? `<button type="button" data-i="${i}" class="${i === suggOn ? "on" : ""}"><span class="k"><b>${esc(k.title)}</b>${k.road && k.road !== k.title ? `<i>도로명 ${esc(k.road)}</i>` : ""}${k.jibun ? `<i>지번 ${esc(k.jibun)}</i>` : ""}</span><small class="hd">${k.m === undefined ? "행정동 확인 중" : k.m ? `행정동 <b>${esc(k.m.it.e)}</b>` : "행정동 없음"}</small></button>`
     : `<button type="button" data-i="${i}" class="${i === suggOn ? "on" : ""}"><span>${it.short} ${shown || it.g} ${it.e}</span><small>구항 ${it.o[0].d}km</small></button>`).join("");
   box.hidden = false;
 }
@@ -327,18 +323,7 @@ function setItem(it, shown, text) {
   state.item = h.it; state.shownGu = h.shown;
   $("q").value = text;
   suggList = []; renderSugg();
-  const label = `${h.shown || h.it.g} ${h.it.e}`;
-  let rec = store.get("recent", []).filter(x => x.s && x.label !== label);
-  rec.unshift({ label, s: h.it.s, g: h.it.g, e: h.it.e, shown: h.shown });
-  store.set("recent", rec.slice(0, 8));
-  renderRecent(); render();
-}
-function renderRecent() {
-  const rec = store.get("recent", []).filter(r => r.s);
-  const el = $("recent");
-  if (!rec.length) { el.hidden = true; return; }
-  el.innerHTML = `<span>최근</span>` + rec.map((r, i) => `<button type="button" class="chip" data-r="${i}">${r.label}</button>`).join("");
-  el.hidden = false;
+  render();
 }
 
 function surcharge(ft) {
@@ -399,10 +384,9 @@ function render() {
   if (mode === "share") title += ` ${share}%쉐어`;
   if (mode === "inter") title += " 운수사간";
   if (mode === "habul") title += " 하불";
-  const place = $("place").value.trim();
   const lines = [title];
   if (mode === "habul") lines.push($("oneway").checked ? "왕복/편도" : "왕복");
-  lines.push(`인천-${state.shownGu || it.g} ${it.e}${place ? `(${place})` : ""}`);
+  lines.push(`인천-${state.shownGu || it.g} ${it.e}`);
   for (const i of orgs) {
     lines.push(ORG[i]);
     for (const ft of fts) lines.push(`${ftLabel(ft)} ${value(it.o[i], ft, mode, round, share)}`);
@@ -429,25 +413,26 @@ function render() {
 // 이벤트
 $("q").addEventListener("input", e => {
   const v = e.target.value; showMatch("");
+  if (state.item) { state.item = null; render(); }  // 검색어가 바뀌면 이전 견적은 지움 (잘못 복사 방지)
   const r = search(v); suggList = r.list; suggNote = r.note || null; suggMap = r.map || null; suggOn = 0; renderSugg();
   // 로컬에서 딱 맞게 찾았고 주소 형태가 아니면 카카오 생략 (예: "통진읍")
   const addrLike = /\d|(로|길)(\s|$)/.test(v) || !r.list.length || !!r.note;
-  if (addrLike) kakaoSearch(v, !!r.note || !r.list.length); else kSeq++;
+  pendingEnter = false;
+  if (addrLike && kakaoOK && v.trim().length >= 2) {
+    const weak = !!r.note || !r.list.length;
+    if (weak) { suggList = []; suggNote = "주소 찾는 중…"; suggMap = null; renderSugg(); }
+    kakaoSearch(v, weak, r);
+  } else kSeq++;
 });
 $("q").addEventListener("keydown", e => {
   if (e.key === "ArrowDown" && suggList.length) { suggOn = (suggOn + 1) % suggList.length; renderSugg(); e.preventDefault(); }
   else if (e.key === "ArrowUp" && suggList.length) { suggOn = (suggOn - 1 + suggList.length) % suggList.length; renderSugg(); e.preventDefault(); }
-  else if (e.key === "Enter") { if (suggList.length) pick(suggOn); e.preventDefault(); }
+  else if (e.key === "Enter") { if (suggList.length) pick(suggOn); else if (suggNote === "주소 찾는 중…") pendingEnter = true; e.preventDefault(); }
   else if (e.key === "Escape") { suggList = []; renderSugg(); }
 });
 $("q").addEventListener("focus", e => e.target.select());
 $("sugg").addEventListener("mousedown", e => { const b = e.target.closest("button"); if (b) { e.preventDefault(); pick(+b.dataset.i); } });
 document.addEventListener("click", e => { if (!e.target.closest(".searchbox")) { suggList = []; renderSugg(); } });
-$("recent").addEventListener("click", e => {
-  const b = e.target.closest(".chip"); if (!b) return;
-  const r = store.get("recent", []).filter(x => x.s)[+b.dataset.r]; const it = r && findSame(r.s, r.g, r.e); if (!it) return;
-  suggList = [{ it, shown: r.shown }]; suggNote = null; pick(0);
-});
 document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
   state.mode = b.dataset.mode;
   document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
@@ -473,7 +458,8 @@ if (KAKAO_KEY && !KAKAO_KEY.startsWith("/*")) {
   });
   document.head.appendChild(sc);
 }
-function kakaoSearch(q, replaceLocal) {
+let pendingEnter = false;
+function kakaoSearch(q, replaceLocal, local) {
   clearTimeout(kTimer);
   const seq = ++kSeq;
   if (!kakaoOK) return;
@@ -485,16 +471,32 @@ function kakaoSearch(q, replaceLocal) {
     const OK = kakao.maps.services.Status.OK;
     const fin = () => {
       if (++done < 2 || seq !== kSeq) return;
-      const seen = new Set(ad.map(r => r.address_name));
+      // 주소검색 결과에는 행정동(region_3depth_h_name)이 들어 있음 → 바로 사용
+      const adItems = ad.map(r => {
+        const a = r.address, ra = r.road_address;
+        return { title: ra ? ra.address_name : r.address_name, road: ra ? ra.address_name : "", jibun: a ? a.address_name : "", x: r.x, y: r.y,
+          h: a ? { r1: a.region_1depth_name, r2: a.region_2depth_name, h: a.region_3depth_h_name, b: a.region_3depth_name } : null, exact: true };
+      });
+      const seen = new Set(adItems.map(k => k.jibun).filter(Boolean));
       const items = [
-        ...ad.map(r => ({ name: r.road_address ? r.road_address.address_name : r.address_name, addr: r.address_name, road: r.road_address ? r.road_address.address_name : "", x: r.x, y: r.y })),
-        ...kw1.filter(r => !seen.has(r.address_name) || r.place_name).map(r => ({ name: r.place_name, addr: r.address_name, road: r.road_address_name, x: r.x, y: r.y }))
+        ...adItems,
+        ...kw1.filter(r => !seen.has(r.address_name)).map(r => ({ title: r.place_name, road: r.road_address_name, jibun: r.address_name, x: r.x, y: r.y }))
       ].slice(0, 8);
-      if (!items.length) return;
+      if (!items.length) {  // 카카오도 못 찾으면 글자 분석 결과로
+        if (replaceLocal) { suggList = local ? local.list : []; suggNote = local && local.note ? local.note : (suggList.length ? null : "주소를 찾지 못했어요. 시·군·구와 읍·면·동을 넣어보세요."); suggMap = local ? local.map : null; renderSugg(); }
+        pendingEnter = false; return;
+      }
       const kRows = items.map(k => ({ kakao: k }));
       if (replaceLocal) { suggList = kRows; suggNote = null; suggMap = null; }
       else suggList = suggList.filter(x => !x.kakao).concat(kRows);
       suggOn = 0; renderSugg();
+      if (pendingEnter) { pendingEnter = false; pick(0); return; }
+      // 각 후보의 행정동을 미리 찾아 목록에 표시, 정확한 주소 1순위는 바로 계산
+      items.forEach((k, i) => resolveK(k).then(m => {
+        if (seq !== kSeq) return;
+        renderSugg();
+        if (i === 0 && k.exact && m) applyK(k, m, true);
+      }));
     };
     kGeo.addressSearch(kw, (d, st) => { if (st === OK) ad = d.slice(0, 4); fin(); });
     kPlaces.keywordSearch(kw, (d, st) => { if (st === OK) kw1 = d.slice(0, 6); fin(); });
@@ -512,28 +514,42 @@ function matchRegion(r1, r2, r3) {
     || (shown && cands.find(it => NEW_GU[shown].includes(it.g))) || (cands.length === 1 ? cands[0] : null);
   return best ? { it: best, shown: shown && best.g !== shown ? shown : null } : null;
 }
+// 후보 하나의 행정동 → 운임표 항목 (주소 결과는 행정동 포함, 장소 결과는 좌표로 조회)
+function resolveK(k) {
+  if (k.m !== undefined) return Promise.resolve(k.m);
+  if (k.p) return k.p;
+  // 읍·면은 주소에 적힌 이름을 우선 (좌표가 경계에 걸려 옆 면으로 잡히는 문제 방지)
+  const em = ` ${k.road || ""} ${k.jibun || ""} `.match(/\s([가-힣]+(?:읍|면))(?=\s)/);
+  const finish = (r1, r2, h, b) => {
+    let m = null;
+    if (em) m = matchRegion(r1, r2, em[1]);
+    if (!m && h) m = matchRegion(r1, r2, h);
+    if (!m && b) m = matchRegion(r1, r2, b);
+    k.m = m; return m;
+  };
+  if (k.h) return Promise.resolve(finish(k.h.r1, k.h.r2, k.h.h, k.h.b));
+  return (k.p = new Promise(res => kGeo.coord2RegionCode(+k.x, +k.y, (d, st) => {
+    if (st !== kakao.maps.services.Status.OK || !d.length) { k.m = null; return res(null); }
+    const H = d.find(r => r.region_type === "H"), B = d.find(r => r.region_type === "B"), R = H || B;
+    res(finish(R.region_1depth_name, R.region_2depth_name, H && H.region_3depth_name, B && B.region_3depth_name));
+  })));
+}
+// quiet=true: 입력 중 자동 계산 (검색창·목록은 그대로 둠)
+function applyK(k, m, quiet) {
+  const label = `${m.shown || m.it.g} ${m.it.e}`;
+  if (quiet) { state.item = m.it; state.shownGu = m.shown; render(); }
+  else setItem(m.it, m.shown, k.road || k.jibun || k.title);
+  showMatch(`✓ 행정동 ${label} 운임으로 계산했어요` + (k.road ? `\n도로명  ${k.road}` : "") + (k.jibun ? `\n지번  ${k.jibun}` : ""));
+}
 function pickKakao(k) {
-  const text = k.road || k.addr || k.name;
+  const text = k.road || k.jibun || k.title;
   $("q").value = text; suggList = []; renderSugg();
   showMatch("행정동 확인 중…");
-  kGeo.coord2RegionCode(+k.x, +k.y, (res, st) => {
-    let m = null;
-    if (st === kakao.maps.services.Status.OK) {
-      const H = res.find(r => r.region_type === "H"), B = res.find(r => r.region_type === "B");
-      // 읍·면은 주소에 적힌 이름을 우선 (좌표가 경계에 걸려 옆 면으로 잡히는 문제 방지)
-      const em = ` ${k.road || ""} ${k.addr || ""} `.match(/\s([가-힣]+(?:읍|면))(?=\s)/);
-      if (em && H) m = matchRegion(H.region_1depth_name, H.region_2depth_name, em[1]);
-      if (!m && H) m = matchRegion(H.region_1depth_name, H.region_2depth_name, H.region_3depth_name);
-      if (!m && B) m = matchRegion(B.region_1depth_name, B.region_2depth_name, B.region_3depth_name);
-    }
-    if (m) {
-      setItem(m.it, m.shown, text);
-      showMatch(`✓ 행정동 ${m.shown || m.it.g} ${m.it.e} 운임으로 계산했어요`);
-    } else {
-      const r = addrSearch(k.addr || text) || { list: [] };
-      suggList = r.list; suggNote = "행정동을 자동으로 못 찾았어요. 목록에서 골라주세요."; suggMap = text; renderSugg();
-      showMatch("");
-    }
+  resolveK(k).then(m => {
+    if (m) { applyK(k, m); return; }
+    const r = addrSearch(k.jibun || text) || { list: [] };
+    suggList = r.list; suggNote = "행정동을 자동으로 못 찾았어요. 목록에서 골라주세요."; suggMap = text; renderSugg();
+    showMatch("");
   });
 }
 function renderEra() {
@@ -570,9 +586,6 @@ state.mode = store.get("mode", "safe");
 document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x.dataset.mode === state.mode ? "true" : "false"));
 $("share").value = store.get("share", "30");
 $("round").checked = store.get("round", true);
-renderRecent();
-const ex = search("연수구 송도3동").list[0];
-if (ex) { state.item = ex.it; $("q").value = "인천 연수구 송도3동"; }
 render();
 </script>
 
