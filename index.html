@@ -199,7 +199,7 @@ tr.grp th { color: var(--ink); border-bottom: 1.5px solid var(--ink); text-align
 
   <div class="result">
     <div class="slip">
-      <div class="slip-head"><span class="lab">보낼 견적 <span class="hint">· 복사 시 맨 윗줄 시기 표시는 빠져요</span></span><button type="button" class="copy" id="copy">복사</button></div>
+      <div class="slip-head"><span class="lab">보낼 견적 <span class="hint">· 복사 시 맨 윗줄은 빠져요</span></span><button type="button" class="copy" id="copy">복사</button></div>
       <pre id="out"></pre>
     </div>
     <div class="ref">
@@ -397,9 +397,8 @@ function render() {
   if (scNames.length) lines.push(`※ 할증 포함(${scNames.join(", ")})`);
   if ($("combine").checked && fts.includes("20")) lines.push("※ 20피트 COMBINE 운송(동일화주 180%) 적용");
   if ($("ft45").checked && fts.includes("40")) lines.push("※ 45FT 컨테이너(40FT×112.5%) 적용");
-  // 복사할 때는 맨 위 "26년 11월운임"은 빼고, 하불/운수사간/쉐어 표시는 남긴다
-  const rest = title.slice(`${ERAS[curEra].label}운임`.length).trim();
-  state.text = (rest ? [rest, ...lines.slice(1)] : lines.slice(1)).join("\n");
+  // 복사할 때는 맨 윗줄(26년 11월운임 / 30%쉐어 / 운수사간 / 하불)을 모두 뺀다
+  state.text = lines.slice(1).join("\n");
   $("out").innerHTML = lines.map(l => l.replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))
     .replace(/([\d,]+원)/g, '<span class="amt">$1</span>')).join("\n");
 
